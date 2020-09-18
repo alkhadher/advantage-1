@@ -1,6 +1,6 @@
 /* ====================================================
  *
-*       Copyright 2008-2012 iAnywhere Solutions, Inc.
+ *    (c) 2014 SAP AG or an SAP affiliate company. All rights reserved.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -164,5 +164,3 @@ void ads_finalize_interface( AdvantageInterface * api )
    unloadLibrary( api->dll_handle );
    memset( api, 0, sizeof(*api));
 }
-
-
