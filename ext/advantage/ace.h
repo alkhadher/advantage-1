@@ -1,25 +1,29 @@
-// Copyright (c) 2001-2005 Extended Systems, Inc.
-// Portions Copyright (c) 2005-2012, iAnywhere Solutions, Inc.
-// All rights reserved. All unpublished rights reserved.
+// (c) 2014 SAP AG or an SAP affiliate company. All rights reserved.
 //
-// This source code can be used, modified, or copied by the licensee as long as
-// the modifications (or the new binary resulting from a copy or modification of
-// this source code) are used with Extended Systems' products. The source code
-// is not redistributable as source code, but is redistributable as compiled
-// and linked binary code. If the source code is used, modified, or copied by
-// the licensee, Extended Systems Inc. reserves the right to receive from the
-// licensee, upon request, at no cost to Extended Systems Inc., the modifications.
+// No part of this publication may be reproduced or transmitted in any form or
+// for any purpose without the express permission of SAP AG or an SAP affiliate
+// company.
 //
-// Extended Systems Inc. does not warrant that the operation of this software
-// will meet your requirements or that the operation of the software will be
-// uninterrupted, be error free, or that defects in software will be corrected.
-// This software is provided "AS IS" without warranty of any kind. The entire
-// risk as to the quality and performance of this software is with the purchaser.
-// If this software proves defective or inadequate, purchaser assumes the entire
-// cost of servicing or repair. No oral or written information or advice given
-// by an Extended Systems Inc. representative shall create a warranty or in any
-// way increase the scope of this warranty.
-// LIBACE_VERSION 11.10
+// The information contained herein may be changed without prior notice.  Some
+// software products marketed by SAP AG and its distributors contain
+// proprietary software components of other software vendors. National product
+// specifications may vary.
+//
+// These materials are provided by SAP AG or an SAP affiliate company for
+// informational purposes only, without representation or warranty of any kind,
+// and SAP or its affiliated companies shall not be liable for errors or
+// omissions with respect to the materials. The only warranties for SAP or SAP
+// affiliate company products and services are those that are set forth in the
+// express warranty statements accompanying such products and services, if any.
+// Nothing herein should be construed as constituting an additional warranty.
+//
+// SAP and other SAP products and services mentioned herein as well as their
+// respective logos are trademarks or registered trademarks of SAP AG (or an
+// SAP affiliate company) in Germany and other countries. All other product and
+// service names mentioned are the trademarks of their respective companies.
+// Please see http://global.sap.com/corporate-en/legal/copyright/index.epx for
+// additional trademark information and notices.
+// LIBACE_VERSION 12.00
 /*******************************************************************************
 * Source File  : ace.h
 * Description  : This is the main header file for the Advantage Client
@@ -35,10 +39,6 @@
    #include "unixutils.h"
 
    #define ADS_PATH_DELIMITER    '/'
-
-   #ifdef ASANLM
-      #define delay(x) AdsSleep(x)
-   #endif
 #endif
 
 #if defined( unix )
@@ -148,13 +148,13 @@
    /* use a define here to solve 64bit int typedef problems, see wincompat.h & rddunvrs.h */
    #ifndef ADS_64INTS
    #define ADS_64INTS
-   typedef loff_t           UNSIGNED64;
-   typedef loff_t           SIGNED64;
+   typedef long long unsigned int   UNSIGNED64;
+   typedef long long int            SIGNED64;
    #endif
 #endif
 
 #define VOID   void
-#define RUBY_EXTERN extern
+#define EXTERN extern
 #define STATIC static
 
 
@@ -386,6 +386,8 @@
 #define ADS_FTS_ENCODE_UTF8           0x00002000
 #define ADS_FTS_ENCODE_UTF16          0x00004000
 
+#define ADS_ONLINE                    0x00200000     // Perform ONLINE create with table open shared
+
 /* Option to force index version */
 #define ADS_ALLOW_MULTIPLE_COLLATION  0x10000000
 
@@ -394,7 +396,7 @@
 #define ADS_UCHAR_KEY_LONG            0x40000000
 #define ADS_UCHAR_KEY_XLONG           0x60000000
 
-#define ADS_INDEX_OPTIONS_MASK         0x70007FFF     // All valid index options
+#define ADS_INDEX_OPTIONS_MASK        0x70207FFF     // All valid index options
 
 /* Options for returning string values */
 #define ADS_NONE                 0x0000
@@ -405,6 +407,10 @@
 #define ADS_DONT_CHECK_CONV_ERR  0x0008
 #define ADS_GET_FORMAT_ANSI      0x0010
 #define ADS_GET_FORMAT_WEB       0x0030
+#define ADS_GET_GUID_MIME        0x0100      // MIME ENCODED
+#define ADS_GET_GUID_FILE        0x0200      // FILE ENCODED
+#define ADS_GET_GUID_NUMBERS     0x0400      // ONLY NUMBER
+#define ADS_GET_GUID_REGISTRY    0x0800      // REGISTRY Format - default
 
 /* this is for passing null terminated strings */
 #define ADS_NTS    ( ( UNSIGNED16 ) -1 )
@@ -751,6 +757,9 @@
 #define AE_CONNECTION_TIMED_OUT         5224
 #define AE_DELTA_SUPPORT_NOT_POSSIBLE   5225  /* Cannot enable web delta functionality */
 #define AE_QUERY_LOGGING_ERROR          5226  /* the additional error info should include specifics */
+#define AE_COMPRESSION_FAILED           5227
+#define AE_INVALID_DATA                 5228
+#define AE_ROWVERSION_REQUIRED          5229
 
 /* Supported file types */
 #define ADS_DATABASE_TABLE       ADS_DEFAULT
@@ -868,7 +877,8 @@
 #define ADS_RAW                  16    /* Untranslated data */
 #define ADS_CURDOUBLE            17    /* IEEE 8 byte floating point currency */
 #define ADS_MONEY                18    /* 8 byte, 4 implied decimal Currency Field */
-#define ADS_LONGLONG             19    /* 8 byte integer */
+#define ADS_LONGINT              19    /* 8 byte integer */
+#define ADS_LONGLONG             19    /* 8 byte integer. Deprecated. Use ADS_LONGINT instead. */
 #define ADS_CISTRING             20    /* CaSe INSensiTIVE character data */
 #define ADS_ROWVERSION           21    /* 8 byte integer, incremented for every update, unique to entire table */
 #define ADS_MODTIME              22    /* 8 byte timestamp, updated when record is updated */
@@ -878,6 +888,7 @@
 #define ADS_NCHAR                26    /* Unicode Character data */
 #define ADS_NVARCHAR             27    /* Unpadded Unicode Character data */
 #define ADS_NMEMO                28    /* Variable Length Unicode Data */
+#define ADS_GUID                 29    /* 16-byte binary data */
 
 /*
  * supported User Defined Function types to be used with AdsRegisterUDF
@@ -1108,6 +1119,16 @@ typedef struct
    UNSIGNED8  aucOSUserLoginName[ADS_MAX_USER_NAME]; /* OS user login name   */
    } ADS_MGMT_THREAD_ACTIVITY;
 
+
+/* GUID structure */
+typedef struct
+   {
+   UNSIGNED32  Data1;
+   UNSIGNED16  Data2;
+   UNSIGNED16  Data3;
+   UNSIGNED64  Data4;
+   } ADS_GUID_DATA;
+
 /*
  * Data dictionary properties related constants and structure
  */
@@ -1147,6 +1168,7 @@ typedef struct _ADD_FIELD_DESC_
 #define ADS_DD_PACKAGE_OBJECT            19  /* function and stored procedure packages */
 #define ADS_DD_QUALIFIED_TRIGGER_OBJ     20  /* Used in AdsDDFindFirst/NextObject */
 #define ADS_DD_PERMISSION_OBJECT         21
+#define ADS_DD_DATABASE_TRIGGER_OBJ      22  /* Used in AdsDDFindFirst/NextObject */
 
 
 /* Common properties numbers < 100 */
@@ -1196,6 +1218,8 @@ typedef struct _ADD_FIELD_DESC_
 #define ADS_DD_FTS_DROP_CHARS_W              129
 #define ADS_DD_FTS_CONDITIONAL_CHARS_W       130
 #define ADS_DD_QUERY_VIA_ROOT                131
+#define ADS_DD_ENFORCE_MAX_FAILED_LOGINS     132
+#define ADS_DD_DATABASE_TRIGGER_TYPES        133   /* for internal use */
 
 /* Table properties between 200 and 299 */
 #define ADS_DD_TABLE_VALIDATION_EXPR   200
@@ -1221,11 +1245,13 @@ typedef struct _ADD_FIELD_DESC_
 #define ADS_DD_TABLE_TXN_FREE          220
 #define ADS_DD_TABLE_VALIDATION_EXPR_W 221
 #define ADS_DD_TABLE_WEB_DELTA         222
+#define ADS_DD_TABLE_CONCURRENCY_ENABLED 223   // for OData concurrency control
 
 
 /* Bit values for the ADS_DD_FIELD_OPTIONS property */
 #define ADS_DD_FIELD_OPT_VFP_BINARY    0x00000001   /* field has NOCPTRANS option */
 #define ADS_DD_FIELD_OPT_VFP_NULLABLE  0x00000002   /* field can be physicall set to NULL */
+#define ADS_DD_FIELD_OPT_COMPRESSED    0x00010000   /* Field may be compressed, ADT memo, nmemo and blob */
 
 /* Field properties between 300 - 399 */
 #define ADS_DD_FIELD_DEFAULT_VALUE     300
@@ -1424,6 +1450,12 @@ typedef struct _ADD_FIELD_DESC_
 #define ADS_TRIGEVENT_UPDATE             2
 #define ADS_TRIGEVENT_DELETE             3
 
+/* Dictionary (system) trigger event types */
+#define ADS_TRIGEVENT_OPEN_TABLE         4
+#define ADS_TRIGEVENT_CLOSE_TABLE        5
+#define ADS_TRIGEVENT_CONNECT            6
+#define ADS_TRIGEVENT_DISCONNECT         7
+
 /* Trigger types */
 #define ADS_TRIGTYPE_BEFORE         0x00000001
 #define ADS_TRIGTYPE_INSTEADOF      0x00000002
@@ -1503,8 +1535,8 @@ typedef struct _ADD_FIELD_DESC_
 #define ADS_CIPHER_SUITE_STRING_AES128      "AES128-SHA"
 #define ADS_CIPHER_SUITE_STRING_AES256      "AES256-SHA"
 
-/* 
- * System alias which always resolves to the root dictionary 
+/*
+ * System alias which always resolves to the root dictionary
  * defined by ADS_ROOT_DICTIONARY server configuration setting
  */
 #define ADS_ROOT_DD_ALIAS                   "__rootdd"
@@ -4226,6 +4258,13 @@ typedef UNSIGNED32 (WINAPI *ADSOPENTABLE101_PTR)(
 UNSIGNED32 ENTRYPOINT AdsPackTable( ADSHANDLE hTable );
 typedef UNSIGNED32 (WINAPI *ADSPACKTABLE_PTR)( ADSHANDLE hTable );
 
+UNSIGNED32 ENTRYPOINT AdsPackTable120( ADSHANDLE  hTable,
+                                       UNSIGNED32 ulMemoBlockSize,
+                                       UNSIGNED32 ulOptions );
+typedef UNSIGNED32 (WINAPI *ADSPACKTABLE_PTR120)( ADSHANDLE hTable,
+                                                  UNSIGNED32 ulMemoBlockSize,
+                                                  UNSIGNED32 ulOptions );
+
 UNSIGNED32 ENTRYPOINT AdsRecallRecord( ADSHANDLE hTable );
 typedef UNSIGNED32 (WINAPI *ADSRECALLRECORD_PTR)( ADSHANDLE hTable );
 
@@ -4942,6 +4981,33 @@ typedef UNSIGNED32 (WINAPI *ADSRESTRUCTURETABLE90_PTR)( ADSHANDLE    hObj,
                                              UNSIGNED8    *pucChangeFields,
                                              UNSIGNED8    *pucCollation );
 
+UNSIGNED32 ENTRYPOINT AdsRestructureTable120( ADSHANDLE    hObj,
+                                              UNSIGNED8    *pucName,
+                                              UNSIGNED8    *pucPassword,
+                                              UNSIGNED16   usTableType,
+                                              UNSIGNED16   usCharType,
+                                              UNSIGNED16   usLockType,
+                                              UNSIGNED16   usCheckRights,
+                                              UNSIGNED8    *pucAddFields,
+                                              UNSIGNED8    *pucDeleteFields,
+                                              UNSIGNED8    *pucChangeFields,
+                                              UNSIGNED8    *pucCollation,
+                                              UNSIGNED32   ulMemoBlockSize,
+                                              UNSIGNED32   ulOptions );
+typedef UNSIGNED32 (WINAPI *ADSRESTRUCTURETABLE120_PTR)( ADSHANDLE    hObj,
+                                              UNSIGNED8    *pucName,
+                                              UNSIGNED8    *pucPassword,
+                                              UNSIGNED16   usTableType,
+                                              UNSIGNED16   usCharType,
+                                              UNSIGNED16   usLockType,
+                                              UNSIGNED16   usCheckRights,
+                                              UNSIGNED8    *pucAddFields,
+                                              UNSIGNED8    *pucDeleteFields,
+                                              UNSIGNED8    *pucChangeFields,
+                                              UNSIGNED8    *pucCollation,
+                                              UNSIGNED32   ulMemoBlockSize,
+                                              UNSIGNED32   ulOptions );
+
 UNSIGNED32 ENTRYPOINT AdsGetSQLStatementHandle( ADSHANDLE  hCursor,
                                                 ADSHANDLE  *phStmt );
 typedef UNSIGNED32 (WINAPI *ADSGETSQLSTATEMENTHANDLE_PTR)( ADSHANDLE  hCursor,
@@ -5131,6 +5197,22 @@ UNSIGNED32 ENTRYPOINT AdsFindServers( UNSIGNED32 ulOptions,
                                       ADSHANDLE *phTable );
 typedef UNSIGNED32 (WINAPI *ADSFINDSERVERS_PTR)( UNSIGNED32 ulOptions,
                                                  ADSHANDLE *phTable );
+
+
+UNSIGNED32 ENTRYPOINT AdsBinaryToFileW( ADSHANDLE   hTable,
+                                        UNSIGNED8   *pucFldName,
+                                        WCHAR       *pwcFileName );
+typedef UNSIGNED32 (WINAPI *ADSBINARYTOFILEW_PTR)( ADSHANDLE   hTable,
+                                                   UNSIGNED8   *pucFldName,
+                                                   WCHAR       *pwcFileName );
+UNSIGNED32 ENTRYPOINT AdsFileToBinaryW( ADSHANDLE        hTable,
+                                        UNSIGNED8        *pucFldName,
+                                        UNSIGNED16       usBinaryType,
+                                        WCHAR            *pwcFileName );
+typedef UNSIGNED32 (WINAPI *ADSFILETOBINARYW_PTR)( ADSHANDLE        hTable,
+                                                   UNSIGNED8        *pucFldName,
+                                                   UNSIGNED16       usBinaryType,
+                                                   WCHAR            *pwcFileName );
 
 #ifdef __cplusplus
    }  /* extern "C" */
